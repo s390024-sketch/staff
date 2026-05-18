@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal | 帳號管理系統</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #2ecc71;
+            --dark-text: #2c3e50;
+            --light-grey: #f9f9f9;
+            --border-color: #e0e0e0;
+            --bg-color: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--dark-text);
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--dark-text);
+            border-bottom: 3px solid var(--primary-green);
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: var(--primary-green);
+        }
+
+        button {
+            background-color: var(--primary-green);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.3s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: #27ae60;
+        }
+
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .result-card {
+            background: var(--light-grey);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .batch-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary-green);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .data-item {
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .data-item:last-child { margin-bottom: 0; }
+
+        .label {
+            font-size: 11px;
+            color: #95a5a6;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .value-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 10px 12px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            font-size: 15px;
+            min-height: 20px;
+        }
+
+        .copy-text {
+            font-size: 11px;
+            color: var(--primary-green);
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        #loader {
+            display: none;
+            text-align: center;
+            color: var(--primary-green);
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 13px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>STAFF PORTAL</h1>
+        <p>帳號查詢系統</p>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="accessCode" placeholder="請輸入提取碼" autocomplete="off">
+        <button id="fetchBtn" onclick="fetchData()">查詢</button>
+    </div>
+
+    <div id="loader">正在安全連線中...</div>
+    <div id="displayArea"></div>
+</div>
+
+<div id="toast">已複製到剪貼簿</div>
+
+<script>
+    // 使用您最新的 Google Apps Script 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbBwtZdtU1MzkBxbsiUv7AGKrlM5RqcSBhsoYrTW3vX_gtdUtvbgkqKSrzNEQqBNrco/exec";
+
+    async function fetchData() {
+        const codeInput = document.getElementById('accessCode');
+        const code = codeInput.value.trim();
+        const area = document.getElementById('displayArea');
+        const loader = document.getElementById('loader');
+        const btn = document.getElementById('fetchBtn');
+
+        if (!code) {
+            alert("請輸入提取碼");
+            return;
+        }
+
+        btn.disabled = true;
+        loader.style.display = "block";
+        area.innerHTML = "";
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                mode: "cors",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ code: code })
+            });
+
+            const result = await response.json();
+            loader.style.display = "none";
+            btn.disabled = false;
+
+            if (result.success) {
+                result.data.forEach((item, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    
+                    let html = '<span class="batch-label">批次資料 ' + (index + 1) + '</span>';
+                    html += createItem("GMAIL 帳號", item.email);
+                    html += createItem("登入密碼", item.pass);
+                    html += createItem("輔助驗證 / 備援", item.code);
+                    
+                    card.innerHTML = html;
+                    area.appendChild(card);
+                });
+            } else {
+                area.innerHTML = '<p style="color:#e74c3c; text-align:center; font-size:14px; margin-top:20px;">' + result.msg + '</p>';
+            }
+        } catch (e) {
+            loader.style.display = "none";
+            btn.disabled = false;
+            alert("連線失敗，請檢查網路或 API 部署設定。\n\n錯誤原因可能是：\n1. Google Script 權限未設為「所有人 (Anyone)」\n2. 部署時未選擇「新版本」");
+        }
+    }
+
+    function createItem(label, value) {
+        // 防止空值顯示
+        const safeValue = value || "無資料";
+        return '<div class="data-item" onclick="copy('' + safeValue + '')">' +
+               '<span class="label">' + label + '</span>' +
+               '<div class="value-box"><span>' + safeValue + '</span><span class="copy-text">複製</span></div>' +
+               '</div>';
+    }
+
+    function copy(text) {
+        if (text === "無資料") return;
+        const input = document.createElement('textarea');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 2000);
+    }
+
+    document.getElementById('accessCode').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') fetchData();
+    });
+</script>
+
+</body>
+</html>
